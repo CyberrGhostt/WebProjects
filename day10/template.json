@@ -1,0 +1,801 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vulnerabilityAssessments_Default_storageContainerPath": {
+            "type": "SecureString"
+        },
+        "storageAccounts_datalakealliantpoc_name": {
+            "defaultValue": "datalakealliantpoc",
+            "type": "String"
+        },
+        "workspaces_wkspc_synapse_datalake_alliant_poc_name": {
+            "defaultValue": "wkspc-synapse-datalake-alliant-poc",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2021-08-01",
+            "name": "[parameters('storageAccounts_datalakealliantpoc_name')]",
+            "location": "eastus2",
+            "sku": {
+                "name": "Standard_RAGRS",
+                "tier": "Standard"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": true,
+                "isHnsEnabled": true,
+                "networkAcls": {
+                    "bypass": "AzureServices",
+                    "virtualNetworkRules": [],
+                    "ipRules": [],
+                    "defaultAction": "Allow"
+                },
+                "supportsHttpsTrafficOnly": true,
+                "encryption": {
+                    "services": {
+                        "file": {
+                            "keyType": "Account",
+                            "enabled": true
+                        },
+                        "blob": {
+                            "keyType": "Account",
+                            "enabled": true
+                        }
+                    },
+                    "keySource": "Microsoft.Storage"
+                },
+                "accessTier": "Hot"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices",
+            "apiVersion": "2021-08-01",
+            "name": "[concat(parameters('storageAccounts_datalakealliantpoc_name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalakealliantpoc_name'))]"
+            ],
+            "sku": {
+                "name": "Standard_RAGRS",
+                "tier": "Standard"
+            },
+            "properties": {
+                "cors": {
+                    "corsRules": []
+                },
+                "deleteRetentionPolicy": {
+                    "enabled": false
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/fileServices",
+            "apiVersion": "2021-08-01",
+            "name": "[concat(parameters('storageAccounts_datalakealliantpoc_name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalakealliantpoc_name'))]"
+            ],
+            "sku": {
+                "name": "Standard_RAGRS",
+                "tier": "Standard"
+            },
+            "properties": {
+                "protocolSettings": {
+                    "smb": {}
+                },
+                "cors": {
+                    "corsRules": []
+                },
+                "shareDeleteRetentionPolicy": {
+                    "enabled": true,
+                    "days": 7
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices",
+            "apiVersion": "2021-08-01",
+            "name": "[concat(parameters('storageAccounts_datalakealliantpoc_name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalakealliantpoc_name'))]"
+            ],
+            "properties": {
+                "cors": {
+                    "corsRules": []
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/tableServices",
+            "apiVersion": "2021-08-01",
+            "name": "[concat(parameters('storageAccounts_datalakealliantpoc_name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalakealliantpoc_name'))]"
+            ],
+            "properties": {
+                "cors": {
+                    "corsRules": []
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces",
+            "apiVersion": "2021-06-01",
+            "name": "[parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name')]",
+            "location": "eastus2",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalakealliantpoc_name'))]"
+            ],
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "defaultDataLakeStorage": {
+                    "resourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalakealliantpoc_name'))]",
+                    "createManagedPrivateEndpoint": false,
+                    "accountUrl": "https://datalakealliantpoc.dfs.core.windows.net",
+                    "filesystem": "datalake-fs-alliant-poc"
+                },
+                "encryption": {},
+                "connectivityEndpoints": {
+                    "web": "[concat('https://web.azuresynapse.net?workspace=%2fsubscriptions%2f95ed7b47-0dd5-41a5-b6e2-336617309c91%2fresourceGroups%2frg-synapse-alliant-poc%2fproviders%2fMicrosoft.Synapse%2fworkspaces%2f', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]",
+                    "dev": "[concat('https://', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '.dev.azuresynapse.net')]",
+                    "sqlOnDemand": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '-ondemand.sql.azuresynapse.net')]",
+                    "sql": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '.sql.azuresynapse.net')]"
+                },
+                "managedResourceGroupName": "synapseworkspace-managedrg-c2450aab-1302-4c29-aff6-90e76114335d",
+                "sqlAdministratorLogin": "sqladminuser",
+                "privateEndpointConnections": [],
+                "publicNetworkAccess": "Enabled",
+                "cspWorkspaceAdminProperties": {
+                    "initialWorkspaceAdminObjectId": "0a13e5b3-f110-4818-bc8a-04636fe6312c"
+                },
+                "trustedServiceBypassEnabled": false
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/auditingSettings",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "auditActionsAndGroups": [],
+                "isStorageSecondaryKeyInUse": false,
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/azureADOnlyAuthentications",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "azureADOnlyAuthentication": false
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/bigDataPools",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/sparkalliantpoc')]",
+            "location": "eastus2",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "sparkVersion": "3.1",
+                "nodeCount": 10,
+                "nodeSize": "Small",
+                "nodeSizeFamily": "MemoryOptimized",
+                "autoScale": {
+                    "enabled": true,
+                    "minNodeCount": 3,
+                    "maxNodeCount": 3
+                },
+                "autoPause": {
+                    "enabled": true,
+                    "delayInMinutes": 15
+                },
+                "isComputeIsolationEnabled": false,
+                "sessionLevelPackagesEnabled": true,
+                "cacheSize": 0,
+                "dynamicExecutorAllocation": {
+                    "enabled": false
+                },
+                "provisioningState": "Succeeded"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/extendedAuditingSettings",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "auditActionsAndGroups": [],
+                "isStorageSecondaryKeyInUse": false,
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/firewallRules",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/allowAll')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "255.255.255.255"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/integrationruntimes",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/AutoResolveIntegrationRuntime')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "type": "Managed",
+                "typeProperties": {
+                    "computeProperties": {
+                        "location": "AutoResolve"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/securityAlertPolicies",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled",
+                "disabledAlerts": [
+                    ""
+                ],
+                "emailAddresses": [
+                    ""
+                ],
+                "emailAccountAdmins": false,
+                "retentionDays": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated')]",
+            "location": "eastus2",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "sku": {
+                "name": "DW100c",
+                "capacity": 0
+            },
+            "properties": {
+                "maxSizeBytes": 263882790666240,
+                "collation": "SQL_Latin1_General_CP1_CI_AS",
+                "storageAccountType": "GRS",
+                "provisioningState": "Succeeded"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/vulnerabilityAssessments",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "recurringScans": {
+                    "isEnabled": false,
+                    "emailSubscriptionAdmins": true
+                },
+                "storageContainerPath": "[parameters('vulnerabilityAssessments_Default_storageContainerPath')]"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+            "apiVersion": "2021-08-01",
+            "name": "[concat(parameters('storageAccounts_datalakealliantpoc_name'), '/default/datalake-fs-alliant-poc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_datalakealliantpoc_name'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalakealliantpoc_name'))]"
+            ],
+            "properties": {
+                "immutableStorageWithVersioning": {
+                    "enabled": false
+                },
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "None"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/auditingSettings",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "auditActionsAndGroups": [],
+                "isStorageSecondaryKeyInUse": false,
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/extendedAuditingSettings",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "auditActionsAndGroups": [],
+                "isStorageSecondaryKeyInUse": false,
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/geoBackupPolicies",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/Default')]",
+            "location": "East US 2",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "state": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/securityAlertPolicies",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled",
+                "disabledAlerts": [
+                    ""
+                ],
+                "emailAddresses": [
+                    ""
+                ],
+                "emailAccountAdmins": false,
+                "retentionDays": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/transparentDataEncryption",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/current')]",
+            "location": "East US 2",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "status": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/vulnerabilityAssessments",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "recurringScans": {
+                    "isEnabled": false,
+                    "emailSubscriptionAdmins": true
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/largerc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 22,
+                "maxResourcePercentPerRequest": 22,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/mediumrc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 10,
+                "maxResourcePercentPerRequest": 10,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/smallrc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 3,
+                "maxResourcePercentPerRequest": 3,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc10')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 0.4,
+                "maxResourcePercentPerRequest": 0.4,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc20')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 0.8,
+                "maxResourcePercentPerRequest": 0.8,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc30')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 1.6,
+                "maxResourcePercentPerRequest": 1.6,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc40')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 3.2,
+                "maxResourcePercentPerRequest": 3.2,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc50')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 6.4,
+                "maxResourcePercentPerRequest": 6.4,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc60')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 12.8,
+                "maxResourcePercentPerRequest": 12.8,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc70')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 25.6,
+                "maxResourcePercentPerRequest": 25.6,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc80')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 51.2,
+                "maxResourcePercentPerRequest": 51.2,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/xlargerc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "minResourcePercent": 0,
+                "maxResourcePercent": 100,
+                "minResourcePercentPerRequest": 70,
+                "maxResourcePercentPerRequest": 70,
+                "importance": "normal",
+                "queryExecutionTimeout": 0
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/largerc/largerc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'largerc')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "largerc",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/mediumrc/mediumrc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'mediumrc')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "mediumrc",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/smallrc/smallrc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'smallrc')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "smallrc",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc10/staticrc10')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'staticrc10')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "staticrc10",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc20/staticrc20')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'staticrc20')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "staticrc20",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc30/staticrc30')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'staticrc30')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "staticrc30",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc40/staticrc40')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'staticrc40')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "staticrc40",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc50/staticrc50')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'staticrc50')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "staticrc50",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc60/staticrc60')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'staticrc60')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "staticrc60",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc70/staticrc70')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'staticrc70')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "staticrc70",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/staticrc80/staticrc80')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'staticrc80')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "staticrc80",
+                "importance": "normal"
+            }
+        },
+        {
+            "type": "Microsoft.Synapse/workspaces/sqlPools/workloadGroups/workloadClassifiers",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), '/qualtrics_dedicated/xlargerc/xlargerc')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools/workloadGroups', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated', 'xlargerc')]",
+                "[resourceId('Microsoft.Synapse/workspaces/sqlPools', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'), 'qualtrics_dedicated')]",
+                "[resourceId('Microsoft.Synapse/workspaces', parameters('workspaces_wkspc_synapse_datalake_alliant_poc_name'))]"
+            ],
+            "properties": {
+                "memberName": "xlargerc",
+                "importance": "normal"
+            }
+        }
+    ]
+}
